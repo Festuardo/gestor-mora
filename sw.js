@@ -1,4 +1,4 @@
-const CACHE = 'gestor-mora-v5';
+const CACHE = 'gestor-mora-v6';
 const LOCAL = ['./', './index.html', './creditos.html', './tarjetas.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './vendor/xlsx.bundle.js', './vendor/jspdf.umd.min.js'];
 
 self.addEventListener('install', event => {

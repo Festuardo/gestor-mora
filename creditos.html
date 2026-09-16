@@ -98,7 +98,8 @@ const daysBetween=(a,b)=>{const x=new Date(a+'T12:00:00'),y=new Date(b+'T12:00:0
 const bucket=d=>d<=0?'current':d<=30?'1-30':d<=90?'31-90':d<=180?'91-180':'181+';
 const labelBucket=b=>b==='current'?'Al día':b==='181+'?'181 +':b+' días';
 const todayISO=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
-const projected=r=>{const start=new Date(state.meta.workDate+'T12:00:00'),end=new Date(state.meta.closeDate+'T12:00:00');return Number.isFinite(+start)&&Number.isFinite(+end)&&end>=start?Math.round((end-start)/86400000)+1:0};
+// La proyección pertenece al corte cargado: no debe disminuir cuando avanza la fecha de elaboración.
+const projected=r=>daysBetween(state.meta.cutoff,state.meta.closeDate);
 const adjusted=r=>Math.max(0,n(r.daysAtCut)+projected(r)-n(r.paidInstallments)*30);
 const overdueInstallments=r=>Math.max(0,Math.ceil(adjusted(r)/30));
 const titleCase=value=>txt(value).toLocaleLowerCase('es-GT').split(/\s+/).filter(Boolean).map(word=>word.charAt(0).toLocaleUpperCase('es-GT')+word.slice(1)).join(' ');
@@ -182,7 +183,18 @@ const renderCreditBase=render;
 render=function(){renderCreditBase();const records=visibleRecords();[...$('rows').children].forEach((tr,index)=>{const r=records[index],td=document.createElement('td');td.className='center';td.innerHTML=`<input class="projection-check" type="checkbox" data-row="${index}" ${r&&r.projectedOut?'checked':''} title="Marcar si se proyecta que este caso saldrá de mora">`;tr.insertBefore(td,tr.children[12])})}
 function whatsappUrl(r){let phone=String(r.phone).replace(/\D/g,'');if(phone.length===8)phone='502'+phone;const installments=overdueInstallments(r),installmentsText=installments===1?'1 cuota':`${installments} cuotas`;const msg=(state.message||DEFAULT_MESSAGE).replaceAll('{nombre}',shortName(r.name)).replaceAll('{credito}',r.credit).replaceAll('{dias}',String(adjusted(r))).replaceAll('{cuotas_texto}',installmentsText).replaceAll('{cuotas}',String(installments)).replaceAll('{saldo}',money(r.balance)).replaceAll('{asesor}',state.meta.advisor);return 'https://wa.me/'+phone+'?text='+encodeURIComponent(msg)}
 function calendarUrl(r){const compact=r.promiseDate.replaceAll('-',''),nextDate=new Date(r.promiseDate+'T12:00:00');nextDate.setDate(nextDate.getDate()+1);const end=`${nextDate.getFullYear()}${String(nextDate.getMonth()+1).padStart(2,'0')}${String(nextDate.getDate()).padStart(2,'0')}`;const title=`Promesa de pago - ${shortName(r.name)}`;const details=`Seguimiento de promesa de pago\n\nAsociado: ${r.name}\nCelular: ${r.phone}\nCuotas en atraso: ${overdueInstallments(r)}\nSaldo actual: ${money(r.balance)}${r.notes?`\nObservaciones: ${r.notes}`:''}`;return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${compact}/${end}&details=${encodeURIComponent(details)}`}
-function changePayment(credit,delta){const r=state.records.find(x=>String(x.credit)===String(credit));if(!r)return;r.paidInstallments=Math.max(0,n(r.paidInstallments)+delta);save();render()}
+const paymentRenderTimers=new Map();
+function schedulePaymentRender(key){
+  clearTimeout(paymentRenderTimers.get(key));
+  paymentRenderTimers.set(key,setTimeout(()=>{paymentRenderTimers.delete(key);render()},3000));
+}
+function changePayment(credit,delta,control){
+  const r=state.records.find(x=>String(x.credit)===String(credit));if(!r)return;
+  r.paidInstallments=Math.max(0,n(r.paidInstallments)+delta);
+  save();
+  const counter=control?.closest('.paybox')?.querySelector('span');if(counter)counter.textContent=r.paidInstallments;
+  schedulePaymentRender(String(credit));
+}
 
 function exportExcel(){
   if(!state.records.length)return setStatus('No hay datos para exportar.','error');if(typeof XLSX==='undefined')return setStatus('No se pudo cargar el componente de exportación de Excel.','error');
@@ -231,8 +243,8 @@ async function loadCloseFile(){const file=$('closeFile').files[0];if(!file)retur
 $('loadBtn').onclick=loadFile;$('search').oninput=render;$('rangeFilter').onchange=render;$('exportBtn').onclick=exportExcel;$('projectionBtn').onclick=projectionPdf;$('closeBtn').onclick=downloadLoadedClose;$('importCloseBtn').onclick=()=>$('closeFile').click();$('closeFile').onchange=loadCloseFile;
 $('advisorSearch').addEventListener('input',()=>refreshAdvisorSelect());$('advisor').addEventListener('change',()=>{selectAdvisor($('advisor').value);setStatus(`Mostrando ${state.records.length} crédito(s) en mora de ${state.meta.creditCount} asignados al usuario ${state.meta.advisor}, incluyendo todas las agencias.`,'ok')});$('addAdvisorBtn').onclick=addAdvisor;$('newAdvisor').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addAdvisor()}});
 ['cutoff','workDate','closeDate'].forEach(k=>$(k).addEventListener('change',()=>{state.meta[k]=$(k).value;save();render()}));
-$('rows').addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(b)changePayment(b.dataset.credit,b.dataset.action==='plus'?1:-1)});
-$('rows').addEventListener('change',e=>{const r=state.records.find(x=>String(x.credit)===String(e.target.dataset.credit));if(!r)return;if(e.target.matches('.obs')){r.notes=e.target.value;save()}if(e.target.matches('.promise')){r.promiseDate=e.target.value;save();render();setStatus(r.promiseDate?'Promesa de pago guardada. Presiona Google Calendar para confirmar el evento.':'Fecha de promesa eliminada.','ok')}});
+$('rows').addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(b)changePayment(b.dataset.credit,b.dataset.action==='plus'?1:-1,b)});
+$('rows').addEventListener('change',e=>{const control=e.target,r=state.records.find(x=>String(x.credit)===String(control.dataset.credit));if(!r)return;if(control.matches('.obs')){r.notes=control.value;save()}if(control.matches('.promise')){r.promiseDate=control.value;save();const link=control.closest('tr')?.querySelector('.calendar');if(link){link.href=r.promiseDate?calendarUrl(r):'#';link.classList.toggle('disabled',!r.promiseDate);link.title=r.promiseDate?'Abrir evento preparado':'Selecciona primero una fecha'}setStatus(r.promiseDate?'Promesa de pago guardada como seguimiento; el crédito continúa en mora hasta registrar el pago.':'Fecha de promesa eliminada.','ok')}});
 $('rows').addEventListener('change',e=>{if(!e.target.matches('.projection-check'))return;const row=e.target.closest('tr'),index=[...$('rows').children].indexOf(row),r=visibleRecords()[index];if(!r)return setStatus('No se pudo identificar el crédito seleccionado.','error');r.projectedOut=e.target.checked;save();render();setStatus(r.projectedOut?`${r.name} marcado como caso que se proyecta recuperar.`:`${r.name} permanecerá incluido en la proyección de mora.`,'ok')});
 $('messageBtn').onclick=()=>{$('messageTemplate').value=state.message||DEFAULT_MESSAGE;$('messageDialog').showModal()};$('cancelMessage').onclick=()=>$('messageDialog').close();$('saveMessage').onclick=()=>{state.message=$('messageTemplate').value.trim()||DEFAULT_MESSAGE;state.messageVersion=MESSAGE_VERSION;save();$('messageDialog').close();render();setStatus('Mensaje de WhatsApp actualizado.','ok')};
 $('clearBtn').onclick=()=>{if(confirm('¿Deseas eliminar la cartera y los seguimientos guardados en este navegador?')){localStorage.removeItem(STORAGE_KEY);state={records:[],advisorData:{},customAdvisors:['TO06FGAR'],meta:{agency:'',advisor:'TO06FGAR',cutoff:'2026-09-06',workDate:todayISO(),closeDate:'2026-09-30',fileName:'',totalPortfolio:0,creditCount:0},message:DEFAULT_MESSAGE,messageVersion:MESSAGE_VERSION};syncInputs();render();setStatus('Datos locales eliminados.')}};
