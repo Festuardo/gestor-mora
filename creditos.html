@@ -30,6 +30,13 @@
     @media(max-width:600px){.controls,.summary{grid-template-columns:1fr}.summary .card:first-child{grid-column:auto}.upload{flex-direction:column}header{padding:17px 14px}header h1{font-size:20px}.toolbar .btn{width:100%}.table td{grid-template-columns:115px 1fr}.footerline{display:block}.footerline span{display:block;margin-top:5px}}
     @media(max-width:780px){.table td:nth-child(13):before{content:"Proyección de salida"}.table td:nth-child(14):before{content:"Promesa de pago"}.table td:nth-child(15):before{content:"Seguimiento"}.table td:nth-child(16):before{content:"Acciones"}.close-table td:nth-child(1):before{content:"Agencia"}.close-table td:nth-child(2):before{content:"ID asociado"}.close-table td:nth-child(3):before{content:"Crédito"}.close-table td:nth-child(4):before{content:"Nombre"}.close-table td:nth-child(5):before{content:"Días de mora"}.close-table td:nth-child(6):before{content:"Rango"}.close-table td:nth-child(7):before{content:"Saldo actual"}}
   </style>
+<style id="icon-only-actions">
+.actions,.actions-cell{min-width:0!important;white-space:nowrap}
+.actions .btn,.actions-cell .btn{display:inline-flex!important;align-items:center;justify-content:center;width:36px;height:36px;min-height:36px;padding:7px!important;margin:2px!important;vertical-align:middle}
+.actions .action-icon,.actions-cell .action-icon{width:22px;height:22px;flex-shrink:0}
+.actions br,.actions-cell br{display:none}
+.actions .btn:focus-visible,.actions-cell .btn:focus-visible{outline:3px solid #67b3e0;outline-offset:2px}
+</style>
 </head>
 <body>
 <header><a class="home-link" href="index.html">← Volver al inicio</a><h1>Gestor de Mora</h1><p>Importación de cartera, proyección al cierre y seguimiento de cobros</p></header>
@@ -175,7 +182,7 @@ function render(){
     <td>${esc(r.agency)}</td><td>${esc(r.id)}</td><td>${esc(r.credit)}</td><td><strong>${esc(r.name)}</strong></td><td>${esc(r.phone)}</td><td class="center days">${r.daysAtCut}</td><td class="center days">${p}</td>
     <td><div class="paybox"><button data-action="minus" data-credit="${esc(r.credit)}">−</button><span>${r.paidInstallments||0}</span><button data-action="plus" data-credit="${esc(r.credit)}">+</button></div></td>
     <td class="center days">${a}</td><td><span class="pill ${pill}">${labelBucket(b)}</span></td><td class="money">${money(r.disbursed)}</td><td class="money"><strong>${money(r.balance)}</strong></td>
-    <td><input class="promise" type="date" data-credit="${esc(r.credit)}" value="${esc(r.promiseDate)}"></td><td><textarea class="obs" data-credit="${esc(r.credit)}" placeholder="Llamada, compromiso de pago, fecha…">${esc(r.notes)}</textarea></td><td class="actions-cell"><a class="btn btn-sm wa" target="_blank" rel="noopener" href="${whatsappUrl(r)}">WhatsApp</a><br><a class="btn btn-sm calendar ${r.promiseDate?'':'disabled'}" target="_blank" rel="noopener" href="${r.promiseDate?calendarUrl(r):'#'}" title="${r.promiseDate?'Abrir evento preparado':'Selecciona primero una fecha'}">Google Calendar</a></td></tr>`}).join('');
+    <td><input class="promise" type="date" data-credit="${esc(r.credit)}" value="${esc(r.promiseDate)}"></td><td><textarea class="obs" data-credit="${esc(r.credit)}" placeholder="Llamada, compromiso de pago, fecha…">${esc(r.notes)}</textarea></td><td class="actions-cell"><a class="btn btn-sm wa" target="_blank" rel="noopener" href="${whatsappUrl(r)}" title="WhatsApp" aria-label="WhatsApp"><svg viewBox="0 0 24 24" class="action-icon" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" d="M20.5 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20l1.2-4.7a8.5 8.5 0 1 1 16.3-3.8Z"/><path fill="currentColor" d="m8 7 2 3-1 1c1 2 2 3 4 3l1-1 3 1c0 3-3 4-6 2-3-2-5-5-5-7 0-1 1-2 2-2Z"/></svg></a><a class="btn btn-sm calendar ${r.promiseDate?'':'disabled'}" target="_blank" rel="noopener" href="${r.promiseDate?calendarUrl(r):'#'}" title="Google Calendar" aria-label="Google Calendar"><svg viewBox="0 0 24 24" class="action-icon" aria-hidden="true"><path fill="#4285f4" d="M3 3h18v18H3z"/><path fill="#fff" d="M6 7h12v11H6z"/><path fill="#34a853" d="M21 16v5h-5z"/><path fill="#fbbc04" d="M16 21v-5h5z"/><path fill="#ea4335" d="M3 3h5v4H3z"/><text x="12" y="15" text-anchor="middle" font-size="8" font-family="Arial" font-weight="bold" fill="#4285f4">31</text></svg></a></td></tr>`}).join('');
   $('countText').textContent=`${records.length} registro(s) visible(s) de ${state.records.length}`;
   requestAnimationFrame(fitTable);
 }
