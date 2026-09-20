@@ -51,7 +51,7 @@
       <div class="field"><label>Fecha de cierre</label><input id="closeDate" type="date" value="2026-09-30"></div>
     </div>
     <div id="status" class="status">Carga la cartera general. El sistema detectará los usuarios de asesor y podrás seleccionar cuál deseas visualizar.</div>
-    <p class="privacy">La información se guarda solamente en este navegador mediante almacenamiento local. No se envía a ningún servidor.</p>
+    <p class="privacy">La información se guarda solamente en este navegador mediante almacenamiento local. No se envía a ningún servidor.</p><p class="calendar-reminder-note" style="font-size:12px;color:#52626f;margin:8px 0">Google Calendar: las promesas se agendan a las 3:00 p. m. (Guatemala). Antes de guardar, deja una notificación de 0 minutos antes y elimina el aviso de 1 día antes, si aparece.</p>
   </section>
 
   <section class="summary" id="summary"></section>
@@ -189,7 +189,7 @@ function render(){
 const renderCreditBase=render;
 render=function(){renderCreditBase();const records=visibleRecords();[...$('rows').children].forEach((tr,index)=>{const r=records[index],td=document.createElement('td');td.className='center';td.innerHTML=`<input class="projection-check" type="checkbox" data-row="${index}" ${r&&r.projectedOut?'checked':''} title="Marcar si se proyecta que este caso saldrá de mora">`;tr.insertBefore(td,tr.children[12])})}
 function whatsappUrl(r){let phone=String(r.phone).replace(/\D/g,'');if(phone.length===8)phone='502'+phone;const installments=overdueInstallments(r),installmentsText=installments===1?'1 cuota':`${installments} cuotas`;const msg=(state.message||DEFAULT_MESSAGE).replaceAll('{nombre}',shortName(r.name)).replaceAll('{credito}',r.credit).replaceAll('{dias}',String(adjusted(r))).replaceAll('{cuotas_texto}',installmentsText).replaceAll('{cuotas}',String(installments)).replaceAll('{saldo}',money(r.balance)).replaceAll('{asesor}',state.meta.advisor);return `whatsapp://send?phone=${phone}&text=${encodeURIComponent(msg)}`}
-function calendarUrl(r){const compact=r.promiseDate.replaceAll('-',''),nextDate=new Date(r.promiseDate+'T12:00:00');nextDate.setDate(nextDate.getDate()+1);const end=`${nextDate.getFullYear()}${String(nextDate.getMonth()+1).padStart(2,'0')}${String(nextDate.getDate()).padStart(2,'0')}`;const title=`Promesa de pago - ${shortName(r.name)}`;const details=`Seguimiento de promesa de pago\n\nAsociado: ${r.name}\nCelular: ${r.phone}\nCuotas en atraso: ${overdueInstallments(r)}\nSaldo actual: ${money(r.balance)}${r.notes?`\nObservaciones: ${r.notes}`:''}`;return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${compact}/${end}&details=${encodeURIComponent(details)}`}
+function calendarUrl(r){const compact=r.promiseDate.replaceAll('-',''),start=compact+'T210000Z',end=compact+'T211500Z';const title=`Promesa de pago - ${shortName(r.name)}`;const details=`Seguimiento de promesa de pago\n\nAsociado: ${r.name}\nCelular: ${r.phone}\nCuotas en atraso: ${overdueInstallments(r)}\nSaldo actual: ${money(r.balance)}${r.notes?`\nObservaciones: ${r.notes}`:''}`;return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${start}/${end}&ctz=America%2FGuatemala&details=${encodeURIComponent(details)}`}
 const paymentRenderTimers=new Map();
 function schedulePaymentRender(key){
   clearTimeout(paymentRenderTimers.get(key));
